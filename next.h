@@ -1,0 +1,1 @@
+extern void next(char currPath[],char home[],char display[],time_t begin);
