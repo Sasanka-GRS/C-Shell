@@ -49,6 +49,7 @@ void execute(char *token)
                 return;
             }
             pathOut[pip] = token;
+            token = strtok(NULL,delim1);
             // strcpy(pathOut, token);
             continue;
         }
@@ -63,6 +64,7 @@ void execute(char *token)
                 return;
             }
             pathOut[pip] = token;
+            token = strtok(NULL,delim1);
             continue;
         }
         if (flagl[pip] == 0 && !strcmp(token, "<"))
@@ -207,15 +209,15 @@ void execute(char *token)
     }
     else
     {
-        int pipe1[2];
-        if (pipe(pipe1) < 0)
+        int pipe1[2], pipe2[2];
+        if (pipe(pipe1) < 0 || pipe(pipe2) < 0)
         {
             printf("\033[1;31mpipe() failure: ");
             int err = errno;
             printf("%s", strerror(err));
             printf("\033[0m\n");
         }
-        int in = pipe1[0], out = pipe1[1];
+        //int in = pipe1[0], out = pipe1[1];
         // printf("initial pipe stdin = %d and pipe stdout = %d\n",pipe1[0],pipe1[1]);
         int stdout1 = dup(1), stdin1 = dup(0);
         // printf("initial stdin = %d and stdout = %d\n",dup(0),dup(1));
@@ -224,7 +226,9 @@ void execute(char *token)
         // printf("t1 is %d\nt2 is %d\n", t1, t1);
         for (int i = 0; i <= pip; i++)
         {
-            // printf("was here\n");
+            //printf("i is %d\n",i);
+            //printf("was here\n");
+            /*
             if (!flagl[i] && i != 0)
             {
                 // printf("was in first when i = %d\n",i);
@@ -236,18 +240,19 @@ void execute(char *token)
                 // printf("was in second when i = %d\n",i);
                 dup2(pipe1[0], 0);
                 dup2(pipe1[1], 1);
-            }
-            if (!strcmp(comm[i], "wc"))
-            {
-                char buf[1000];
-                read(0, buf, 1000);
-                write(t1, buf, strlen(buf));
-                // write(stdout1,"here\n",5);
-                char *e = ".tmp1.txt";
-                argExec[i][1] = e;
-                // write(stdout1,"here\n",5);
-                argExec[i][2] = NULL;
-            }
+            }*/
+            /*
+         if (!strcmp(comm[i], "wc"))
+         {
+             char buf[1000];
+             read(0, buf, 1000);
+             write(t1, buf, strlen(buf));
+             // write(stdout1,"here\n",5);
+             char *e = ".tmp1.txt";
+             argExec[i][1] = e;
+             // write(stdout1,"here\n",5);
+             argExec[i][2] = NULL;
+         }*/
             /*
             if(i)
             {
@@ -278,6 +283,37 @@ void execute(char *token)
             }
             if (child == 0)
             {
+                if (i == 0)
+                {
+                    dup2(pipe2[1], 1);
+                }
+                else
+                {
+                    if (i == pip)
+                    {
+                        if (!i % 2)
+                        {
+                            dup2(pipe1[0], 0);
+                        }
+                        else
+                        {
+                            dup2(pipe2[0], 0);
+                        }
+                    }
+                    else
+                    {
+                        if (!i % 2)
+                        {
+                            dup2(pipe1[0], 0);
+                            dup2(pipe2[1], 1);
+                        }
+                        else
+                        {
+                            dup2(pipe2[0], 0);
+                            dup2(pipe1[1], 1);
+                        }
+                    }
+                }
                 int fdO, fdI;
                 // printf("pathIn and pathOut are %s, %s\n", pathIn, pathOut);
                 if (flagg[i])
@@ -320,11 +356,46 @@ void execute(char *token)
                 }
                 exit(1);
             }
-            while (waitpid(child, &statusChild, 0) == 0)
+            else
             {
+                //printf("here\n");
+                while (waitpid(child, &statusChild, 0) == 0)
+                {
+                }
+                if (i == 0)
+                {
+                    close(pipe2[1]);
+                }
+                else
+                {
+                    if (i == pip)
+                    {
+                        if (!i % 2)
+                        {
+                            close(pipe1[0]);
+                        }
+                        else
+                        {
+                            close(pipe2[0]);
+                        }
+                    }
+                    else
+                    {
+                        if (!i % 2)
+                        {
+                            close(pipe1[0]);
+                            close(pipe2[1]);
+                        }
+                        else
+                        {
+                            close(pipe2[0]);
+                            close(pipe1[1]);
+                        }
+                    }
+                }
             }
-            dup2(stdout1, 1);
-            dup2(stdin1, 0);
+            //dup2(stdout1, 1);
+            //dup2(stdin1, 0);
             // printf("here\n");
             /*
             char bffer[1000];

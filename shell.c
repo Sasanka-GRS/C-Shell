@@ -123,33 +123,15 @@ int main(int argc, char *argv[])
         iter = 0;
         char delim[] = ";";
         char *arg1 = strtok(inputArgument, delim);
-        // printf("input Argument is %s\n",inputArgument);
-        /*
-        if (arg1 == NULL)
-        {
-            //time_t end = time(NULL);
-            //int totalTime = end - begin;
-            printf("\r<");
-            printf("\033[0;32m\x1B[1m%s", display);
-            printf("\033[0m:");
-            printf("\033[0;34m\x1B[1m%s", cwd);
-            printf("\033[0m\x1B[0m");
-            printf("> ");
-            for (int i = 0; i < 20000; i++)
-            {
-                inputArgument[i] = '\0';
-            }
-            scanf("%[^\n]%*c", inputArgument);
-            continue;
-        }*/
-        // printf("here\n");
+      
         if (!strcmp(arg1, "\n"))
         {
             // printf("here\n");
             next(cwd, home, display, begin);
             continue;
         }
-        // printf("here\n");
+        //printf("here\n");
+        //printf(" arg1 is %s***", arg1);
         while (arg1 != NULL)
         {
             if (arg1[0] == '\n')
@@ -157,22 +139,28 @@ int main(int argc, char *argv[])
                 arg1 = strtok(NULL, delim);
                 continue;
             }
+            //printf("arg2 is %s*****",arg1);
             arguments[iter] = arg1;
             arg1 = strtok(NULL, delim);
             iter++;
         }
-
-        // printf("here\n");
-
+        //printf("here");
         char delim1[] = " \t\n";
         char delim2[] = "&";
         for (int i = 0; i < iter; i++)
         {
             begin = time(NULL);
             int count = 0;
+            //printf("here");
             char temp[maxPathSize];
+            //printf("here");
             strcpy(temp, arguments[i]);
+            //printf("here");
             char *tok = strtok(temp, delim2);
+            if(tok==NULL)
+            {
+                continue;
+            }
             while (tok != NULL)
             {
                 args[count] = tok;
