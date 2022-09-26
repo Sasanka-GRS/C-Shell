@@ -10,18 +10,18 @@
 #include "discover.h"
 #include "next.h"
 
-// Not storing pids
-
 int maxHostSize = 1000;
 int maxHomeSize = 10000;
 int maxPathSize = 20000;
 int maxInputSize = 10000;
 
 pid_t bgpCount[100000];
-//char bgpName[100000][1000];
 pid_t shell;
 char *bgpComm[100000];
 int bgp = 0;
+char *foregroundArgs[10000];
+char foregroundName[10000];
+pid_t fore = -1;
 char home[10000];
 int totalTime = 0;
 time_t begin = 0;
@@ -32,28 +32,63 @@ char *arguments[100];
 char *args[100];
 extern int errno;
 
+void sigintHandler(int sig_num)
+{
+    signal(SIGINT, sigintHandler);
+    pid_t x = getpid();
+    if (x != shell)
+    {
+        kill(x, SIGINT);
+    }
+    else
+    {
+        write(2, "\n<", 2);
+        write(2, "\033[0;32m\x1B[1m", strlen("\033[0;32m\x1B[1m"));
+        write(2, display, strlen(display));
+        write(2, "\033[0m:", strlen("\033[0m:"));
+        write(2, "\033[0;34m\x1B[1m", strlen("\033[0;34m\x1B[1m"));
+        write(2, cwd, strlen(cwd));
+        write(2, "\033[0m\x1B[0m> ", strlen("\033[0m\x1B[0m> "));
+    }
+}
+
+void sigtHandler(int sig_num)
+{
+    pid_t x = getpid();
+    if (x != shell)
+    {
+        return;
+    }
+    else
+    {
+        if (fore == -1)
+        {
+            write(2, "\r\n<", 3);
+            write(2, "\033[0;32m\x1B[1m", strlen("\033[0;32m\x1B[1m"));
+            write(2, display, strlen(display));
+            write(2, "\033[0m:", strlen("\033[0m:"));
+            write(2, "\033[0;34m\x1B[1m", strlen("\033[0;34m\x1B[1m"));
+            write(2, cwd, strlen(cwd));
+            write(2, "\033[0m\x1B[0m> ", strlen("\033[0m\x1B[0m> "));
+            signal(SIGTSTP, sigtHandler);
+            return;
+        }
+        strcpy(bgpName[bgp], foregroundName);
+        bgpCount[bgp] = fore;
+        bgp++;
+        kill(fore, SIGKILL);
+        fore = -1;
+    }
+    signal(SIGTSTP, sigtHandler);
+}
+
 int main(int argc, char *argv[])
 {
-    /*shell = getpid();
-    pid_t main = fork();
-    if (main == 0)
-    {
-        while (1)
-        {
-            for (int i = 0; i < bgp; i++)
-            {
-                int status;
-                while (waitpid(bgpCount[i], &status, 0)==0)
-                {
-                }
-                printf("%s with pid = %d exited %s\n", bgpComm[i], bgpCount[i], WEXITSTATUS(status) ? "abnormally" : "normally");
-            }
-            sleep(1);
-        }
-    }*/
     char *user = getlogin();
     char host[maxHostSize];
     gethostname(host, maxHostSize);
+
+    shell = getpid();
 
     int userLen = strlen(user), hostLen = strlen(host);
     strcpy(display, user);
@@ -70,21 +105,51 @@ int main(int argc, char *argv[])
     cwd[1] = '\0';
     prev[0] = '\0';
 
+    // Signal Handlers
+    signal(SIGINT, sigintHandler);
+    signal(SIGTSTP, sigtHandler);
+
     // At startup
     begin = time(NULL);
-    next("~",home,display,begin);
+    next("~", home, display, begin);
+    if (!strlen(inputArgument))
+    {
+        exit(0);
+    }
     int iter = 0;
     while (1)
     {
-        //signal(SIGCHLD,backgroundFun);
+
         iter = 0;
         char delim[] = ";";
         char *arg1 = strtok(inputArgument, delim);
-        if (arg1[0] == '\n')
+        // printf("input Argument is %s\n",inputArgument);
+        /*
+        if (arg1 == NULL)
         {
-            next(cwd,home,display,begin);
+            //time_t end = time(NULL);
+            //int totalTime = end - begin;
+            printf("\r<");
+            printf("\033[0;32m\x1B[1m%s", display);
+            printf("\033[0m:");
+            printf("\033[0;34m\x1B[1m%s", cwd);
+            printf("\033[0m\x1B[0m");
+            printf("> ");
+            for (int i = 0; i < 20000; i++)
+            {
+                inputArgument[i] = '\0';
+            }
+            scanf("%[^\n]%*c", inputArgument);
+            continue;
+        }*/
+        // printf("here\n");
+        if (!strcmp(arg1, "\n"))
+        {
+            // printf("here\n");
+            next(cwd, home, display, begin);
             continue;
         }
+        // printf("here\n");
         while (arg1 != NULL)
         {
             if (arg1[0] == '\n')
@@ -96,6 +161,9 @@ int main(int argc, char *argv[])
             arg1 = strtok(NULL, delim);
             iter++;
         }
+
+        // printf("here\n");
+
         char delim1[] = " \t\n";
         char delim2[] = "&";
         for (int i = 0; i < iter; i++)
@@ -104,7 +172,6 @@ int main(int argc, char *argv[])
             int count = 0;
             char temp[maxPathSize];
             strcpy(temp, arguments[i]);
-            //printf("argument is %s\n",arguments[i]);
             char *tok = strtok(temp, delim2);
             while (tok != NULL)
             {
@@ -112,11 +179,10 @@ int main(int argc, char *argv[])
                 count++;
                 tok = strtok(NULL, delim2);
             }
-            int flagAmp = 0;
+            int flagAmp = 0, flagDir = 0;
             if (count == 1)
             {
                 int l = strlen(arguments[i]);
-                //printf("argument is %s\n",arguments[i]);
                 for (int j = 0; j < l; j++)
                 {
                     if (arguments[i][j] == '&')
@@ -130,11 +196,23 @@ int main(int argc, char *argv[])
             {
                 flagAmp = 1;
             }
-            //printf("flag& is %d\n",flagAmp);
+            int l = strlen(arguments[i]);
+            for (int j = 0; j < l; j++)
+            {
+                if (arguments[i][j] == '>' || arguments[i][j] == '<')
+                {
+                    flagDir = 1;
+                    break;
+                }
+            }
             if (!flagAmp)
             {
                 char *token = strtok(arguments[i], delim1);
-                if (!strcmp(token, "cd"))
+                if (!strcmp(token, "exit"))
+                {
+                    return 0;
+                }
+                else if (!strcmp(token, "cd"))
                 {
                     cd(home);
                 }
@@ -154,11 +232,11 @@ int main(int argc, char *argv[])
                 {
                     history();
                 }
-                else if(!strcmp(token,"pinfo"))
+                else if (!strcmp(token, "pinfo"))
                 {
-                    pinfo(shell,home);
+                    pinfo(shell, home);
                 }
-                else if(!strcmp(token,"discover"))
+                else if (!strcmp(token, "discover"))
                 {
                     discover(home);
                 }
@@ -178,7 +256,14 @@ int main(int argc, char *argv[])
                 background(arguments[i], count, home, cwd, display, shell);
             }
         }
-        next(cwd,home,display,begin);
+        next(cwd, home, display, begin);
+        if (!strlen(inputArgument))
+        {
+            exit(0);
+        }
+        signal(SIGINT, sigintHandler);
+        signal(SIGTSTP, sigtHandler);
+        signal(SIGCHLD, backgroundFun);
     }
 
     return 0;

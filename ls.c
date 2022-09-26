@@ -443,12 +443,34 @@ void minusL(int select, char in[], int flag)
 
 void ls(char home[])
 {
+    int flagg = 0, flaggg = 0;
+    char pathOut[10000];
+    pathOut[0] = '\0';
+    int stdout1 = dup(1), stdin1 = dup(0);
     char delim[] = " \n\t";
     char *token = strtok(NULL, delim);
     int flagl = 0, flaga = 0;
     int count = 0;
     while (token != NULL)
     {
+        if (flagg == 0 && !strcmp(token, ">"))
+        {
+            // printf("here1\n");
+            flagg = 1;
+            token = strtok(NULL, delim);
+            strcpy(pathOut, token);
+            // fd = open(pathOut, O_RDWR | O_CREAT | O_TRUNC, 0644);
+            break;
+        }
+        if (flaggg == 0 && !strcmp(token, ">>"))
+        {
+            // printf("here2\n");
+            flaggg = 1;
+            token = strtok(NULL, delim);
+            strcpy(pathOut, token);
+            // fd = open(pathOut, O_RDWR | O_CREAT | O_TRUNC, 0644);
+            break;
+        }
         if (!strcmp(token, "-a"))
         {
             flaga = 1;
@@ -475,6 +497,19 @@ void ls(char home[])
         lsPath[count][1] = '\0';
         count++;
     }
+    int fdO = dup(stdout1);
+    // printf("pathIn and pathOut are %s, %s\n", pathIn, pathOut);
+    if (flagg)
+    {
+        fdO = open(pathOut, O_RDWR | O_CREAT | O_TRUNC, 0644);
+        dup2(fdO, 1);
+        // printf("Yaay");
+    }
+    if (flaggg)
+    {
+        fdO = open(pathOut, O_RDWR | O_CREAT | O_APPEND, 0644);
+        dup2(fdO, 1);
+    }
     lexiPath(count);
     tildaToHome(count, home);
     char cur[maxPathSize];
@@ -499,8 +534,10 @@ void ls(char home[])
             int fdf = open(lsPath[c], O_RDONLY, 0600);
             if (fdf < 0)
             {
+                dup2(stdout1,1);
                 printf("\033[1;31mls: cannot access '%s': No such file or directory", lsPath[c]);
                 printf("\033[0m\n");
+                dup2(fdO,1);
                 continue;
             }
             int l = strlen(lsPath[c]), flagOut = 0;
@@ -638,8 +675,10 @@ void ls(char home[])
                         }
                         else
                         {
+                            dup2(stdout1,1);
                             printf("\033[1;31mls: cannot access '%s': Permission denied", local[i]);
                             printf("\033[0m\n");
+                            dup2(fdO,1);
                             continue;
                         }
                     }
@@ -730,8 +769,10 @@ void ls(char home[])
                         }
                         else
                         {
+                            dup2(stdout1,1);
                             printf("\033[1;31mls: cannot access '%s': Permission denied", local[i]);
                             printf("\033[0m\n");
+                            dup2(fdO,1);
                             continue;
                         }
                     }
@@ -771,6 +812,9 @@ void ls(char home[])
             }
         }
     }
+
+    dup2(stdout1, 1);
+    dup2(stdin1, 0);
 
     return;
 }

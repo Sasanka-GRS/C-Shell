@@ -10,6 +10,8 @@
 
 extern char *args[];
 extern pid_t bgpCount[];
+extern char foregroundName[];
+extern char *foregroundArgs[];
 extern int bgp;
 extern int maxPathSize;
 char home[10000];
@@ -268,6 +270,14 @@ void background(char *a, int count, char home1[], char cwd1[], char display1[], 
                     printf("\033[0m\n");
                     return;
                 }
+                int iter = 0;
+                while(argExec1[iter])
+                {
+                    foregroundArgs[iter] = argExec1[iter];
+                    iter++;
+                }
+                foregroundArgs[iter] = NULL;
+                strcpy(foregroundName,comm1);
                 if (child1 == 0)
                 {
                     int h = execvp(comm1, argExec1);

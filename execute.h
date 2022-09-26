@@ -1,1 +1,1 @@
-extern void execute();
+extern void execute(char *token);

@@ -222,6 +222,7 @@ void discover(char home[])
     int flagf = 0, flagd = 0, flagAll = 0, flagAllF = 0, flagAllD = 0;
     int count = 0;
     char cur[maxPathSize];
+    int stdout1 = dup(1), stdin1 = dup(0);
     //file[0] = '\0';
 
     getcwd(cur, maxPathSize);
@@ -244,6 +245,20 @@ void discover(char home[])
         else if (token[0] == '"')
         {
             file = token;
+        }
+        else if(!strcmp(token,">"))
+        {
+            token = strtok(NULL,delim);
+            int fdO = open(token, O_RDWR | O_CREAT | O_TRUNC, 0644);
+            dup2(fdO, 1);
+            break;
+        }
+        else if(!strcmp(token,">>"))
+        {
+            token = strtok(NULL,delim);
+            int fdO = open(token, O_RDWR | O_CREAT | O_APPEND, 0644);
+            dup2(fdO, 1);
+            break;
         }
         else
         {
@@ -281,4 +296,6 @@ void discover(char home[])
         stackItVariant(folder, flagd, flagf, file1, home);
     }
     chdir(cur);
+    dup2(stdout1, 1);
+    dup2(stdin1, 0);
 }

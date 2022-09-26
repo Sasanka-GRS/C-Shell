@@ -5,7 +5,9 @@ extern int maxPathSize;
 void pinfo(pid_t shell, char home[])
 {
     pid_t here;
+    //printf("pid of shell is %d\n",shell);
     char delim[] = " \n\t";
+    int stdout1 = dup(1), stdin1 = dup(0);
     char *token = strtok(NULL, delim);
     if (token == NULL)
     {
@@ -13,7 +15,45 @@ void pinfo(pid_t shell, char home[])
     }
     else
     {
-        here = atoi(token);
+        if (!strcmp(token, ">"))
+        {
+            here = shell;
+            token = strtok(NULL, delim);
+            int fdO = open(token, O_RDWR | O_CREAT | O_TRUNC, 0644);
+            dup2(fdO, 1);
+        }
+        else if (!strcmp(token, ">>"))
+        {
+            here = shell;
+            token = strtok(NULL, delim);
+            int fdO = open(token, O_RDWR | O_CREAT | O_APPEND, 0644);
+            dup2(fdO, 1);
+        }
+        else
+        {
+            here = atoi(token);
+            token = strtok(NULL, delim);
+            if (token != NULL)
+            {
+                if (!strcmp(token, ">"))
+                {
+                    token = strtok(NULL, delim);
+                    int fdO = open(token, O_RDWR | O_CREAT | O_TRUNC, 0644);
+                    dup2(fdO, 1);
+                }
+                else if (!strcmp(token, ">>"))
+                {
+                    token = strtok(NULL, delim);
+                    int fdO = open(token, O_RDWR | O_CREAT | O_APPEND, 0644);
+                    dup2(fdO, 1);
+                }
+                else
+                {
+                    printf("\033[1;31mpinfo: invalid input");
+                    printf("\033[0m\n");
+                }
+            }
+        }
     }
     pid_t console_pid = tcgetpgrp(STDOUT_FILENO);
     int foreground = 0;
@@ -29,6 +69,7 @@ void pinfo(pid_t shell, char home[])
     int fdHere = open(buffer, O_RDONLY);
     if (fdHere < 0)
     {
+        dup2(stdout1,1);
         printf("\033[1;31mpinfo: cannot access process with pid = %d: No status", here);
         printf("\033[0m\n");
         return;
@@ -38,7 +79,7 @@ void pinfo(pid_t shell, char home[])
     t = strtok(NULL, "\n");
     t = strtok(NULL, "\n");
     printf("process status : %c", t[7]);
-    if(foreground && (t[7]=='R' || t[7]=='S'))
+    if (foreground && (t[7] == 'R' || t[7] == 'S'))
     {
         printf("+");
     }
@@ -49,6 +90,7 @@ void pinfo(pid_t shell, char home[])
     int fdHereM = open(buffer, O_RDONLY);
     if (fdHereM < 0)
     {
+        dup2(stdout1,1);
         printf("\033[1;31mpinfo: cannot access process with pid = %d: No Memory", here);
         printf("\033[0m\n");
         return;
@@ -61,9 +103,10 @@ void pinfo(pid_t shell, char home[])
     char bufe[maxPathSize];
     int l1 = -1;
     l1 = readlink(buffer, bufe, maxPathSize);
-    //printf("readlink is %s\n",bufe);
+    // printf("readlink is %s\n",bufe);
     if (l1 == -1)
     {
+        dup2(stdout1,1);
         printf("\033[1;31mpinfo: cannot access process with pid = %d: No executable path", here);
         printf("\033[0m\n");
         return;
@@ -92,4 +135,6 @@ void pinfo(pid_t shell, char home[])
     }
 
     printf("executable path : %s\n", bufe);
+    dup2(stdout1, 1);
+    dup2(stdin1, 0);
 }

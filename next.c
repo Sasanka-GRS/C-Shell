@@ -2,7 +2,7 @@
 #include "background.h"
 #include "history.h"
 
-void next(char currPath[],char home[],char display[],time_t begin)
+void next(char currPath[], char home[], char display[], time_t begin)
 {
     time_t end = time(NULL);
     int totalTime = end - begin;
@@ -25,7 +25,30 @@ void next(char currPath[],char home[],char display[],time_t begin)
         flagGlobal = 0;
         return;
     }*/
-    scanf("%[^\n]%*c", inputArgument);
-    historyPush(inputArgument,home);
-    signal(SIGCHLD,backgroundFun);
+    size_t b = 10000;
+    char* buf = NULL;
+    buf = (char*) malloc(b*sizeof(char));
+    int len = getline(&buf,&b, stdin);
+    strcpy(inputArgument,buf);
+    //scanf("%[^\n]%*c", inputArgument);
+    if(!len)
+    {
+        printf("in is %s*****", inputArgument);
+    }
+    while (!len)
+    {
+        printf("\n");
+        exit(0);
+        write(1,"\r<", strlen("\r<"));
+        write(1,"\033[0;32m\x1B[1m",strlen("\033[0;32m\x1B[1m"));
+        write(1,display,strlen(display));
+        write(1,"\033[0m:",strlen("\033[0m:"));
+        write(1,"\033[0;34m\x1B[1m", strlen("\033[0;34m\x1B[1m"));
+        write(1,currPath,strlen(currPath));
+        write(1,"\033[0m\x1B[0m",strlen("\033[0m\x1B[0m"));
+        write(1,"> ",strlen("> "));
+        scanf("%[^\n]%*c", inputArgument);
+    }
+    historyPush(inputArgument, home);
+    signal(SIGCHLD, backgroundFun);
 }
